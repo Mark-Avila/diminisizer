@@ -41,7 +41,9 @@ class _HomeState extends State<Home> {
 
   void onChange(double v) {
     setState(() {
-      value2 = v;
+      if (v < 1 - value) {
+        value2 = v;
+      }
     });
   }
 
@@ -99,20 +101,8 @@ class _HomeState extends State<Home> {
                           painter: CirclePaint(
                             value2,
                             Colors.red.withOpacity(0.75),
-                            -40,
-                            0,
-                          ),
-                        ),
-                      ),
-                      SizedBox(
-                        width: double.infinity,
-                        height: double.infinity,
-                        child: CustomPaint(
-                          painter: CirclePaint(
-                            value2,
-                            Colors.green.withOpacity(0.75),
-                            -((value + value2) * 100),
-                            0,
+                            40,
+                            360 * (value / 100),
                           ),
                         ),
                       ),
@@ -130,7 +120,8 @@ class _HomeState extends State<Home> {
                     color: Colors.blue,
                     value: value2,
                     onChange: onChange,
-                  )
+                    max: 1 - value,
+                  ),
                   // ChooseWrapper(buttonHeight: buttonHeight)
                 ],
               ),
@@ -202,12 +193,14 @@ class AcceptWrapper extends StatefulWidget {
   final Color color;
   final double value;
   final AcceptCallback onChange;
+  final double max;
 
   const AcceptWrapper({
     super.key,
     required this.color,
     required this.value,
     required this.onChange,
+    required this.max,
   });
 
   @override
@@ -232,6 +225,7 @@ class _AcceptWrapperState extends State<AcceptWrapper> {
             thumbColor: widget.color,
             value: widget.value,
             onChanged: widget.onChange,
+            max: widget.max,
           ),
         ),
         SizedBox(
@@ -317,7 +311,7 @@ class CirclePaint extends CustomPainter {
   CirclePaint(this.value, this.color, this.start, this.max);
 
   double getStartAngle(double start) {
-    double deg = (360 * start / 100) + 90;
+    double deg = (360 * -start / 100) + 90;
     return -(deg * pi / 180);
   }
 
