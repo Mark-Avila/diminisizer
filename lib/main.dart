@@ -33,14 +33,15 @@ class Home extends StatefulWidget {
 
 class _HomeState extends State<Home> {
   double value = .4;
+  double value2 = .2;
   final double size = 310.0;
   final double buttonHeight = 64.0;
 
-  final Color userColor = Colors.red;
+  final Color userColor = Colors.indigo;
 
   void onChange(double v) {
     setState(() {
-      value = v;
+      value2 = v;
     });
   }
 
@@ -77,12 +78,45 @@ class _HomeState extends State<Home> {
                       fit: BoxFit.cover,
                     ),
                   ),
-                  child: CustomPaint(
-                    painter: CirclePaint(
-                      value,
-                      userColor.withOpacity(0.75),
-                      -pi / 2,
-                    ),
+                  child: Stack(
+                    children: [
+                      SizedBox(
+                        width: double.infinity,
+                        height: double.infinity,
+                        child: CustomPaint(
+                          painter: CirclePaint(
+                            value,
+                            userColor.withOpacity(0.75),
+                            0,
+                            0,
+                          ),
+                        ),
+                      ),
+                      SizedBox(
+                        width: double.infinity,
+                        height: double.infinity,
+                        child: CustomPaint(
+                          painter: CirclePaint(
+                            value2,
+                            Colors.red.withOpacity(0.75),
+                            -40,
+                            0,
+                          ),
+                        ),
+                      ),
+                      SizedBox(
+                        width: double.infinity,
+                        height: double.infinity,
+                        child: CustomPaint(
+                          painter: CirclePaint(
+                            value2,
+                            Colors.green.withOpacity(0.75),
+                            -((value + value2) * 100),
+                            0,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -92,12 +126,12 @@ class _HomeState extends State<Home> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  // AcceptWrapper(
-                  //   color: Colors.blue,
-                  //   value: value,
-                  //   onChange: onChange,
-                  // )
-                  ChooseWrapper(buttonHeight: buttonHeight)
+                  AcceptWrapper(
+                    color: Colors.blue,
+                    value: value2,
+                    onChange: onChange,
+                  )
+                  // ChooseWrapper(buttonHeight: buttonHeight)
                 ],
               ),
             ),
@@ -105,6 +139,22 @@ class _HomeState extends State<Home> {
         ),
       ),
     );
+  }
+}
+
+class PlayerChoice {
+  double value = 0;
+  int playerNumber;
+  Color color;
+
+  PlayerChoice(
+    this.playerNumber,
+    this.value,
+    this.color,
+  );
+
+  void setValue(double value) {
+    this.value = value;
   }
 }
 
@@ -262,8 +312,14 @@ class CirclePaint extends CustomPainter {
   final double value;
   final double start;
   final Color color;
+  final double max;
 
-  CirclePaint(this.value, this.color, this.start);
+  CirclePaint(this.value, this.color, this.start, this.max);
+
+  double getStartAngle(double start) {
+    double deg = (360 * start / 100) + 90;
+    return -(deg * pi / 180);
+  }
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -274,7 +330,7 @@ class CirclePaint extends CustomPainter {
 
     canvas.drawArc(
       area,
-      start,
+      getStartAngle(start),
       2 * pi * value,
       true,
       Paint()..color = color,
