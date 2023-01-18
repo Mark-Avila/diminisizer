@@ -1,9 +1,13 @@
+import 'package:camera/camera.dart';
+import 'package:diminisizer/screens/camera.dart';
 import 'package:diminisizer/screens/players.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class Landing extends StatefulWidget {
-  const Landing({super.key});
+  final CameraDescription camera;
+
+  const Landing({super.key, required this.camera});
 
   @override
   State<Landing> createState() => _LandingState();
@@ -14,7 +18,9 @@ class _LandingState extends State<Landing> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => const Players(),
+        builder: (context) => Camera(
+          camera: widget.camera,
+        ),
       ),
     );
   }

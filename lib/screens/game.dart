@@ -1,37 +1,169 @@
+import 'dart:io';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+typedef AcceptCallback = void Function(double value)?;
+typedef OnPressed = void Function()?;
+
+const defaultColors = [
+  Colors.red,
+  Colors.blue,
+  Colors.green,
+  Colors.amber,
+  Colors.pink,
+  Colors.purple,
+  Colors.orange
+];
+
+class Player {
+  //Player index, in this case the turn
+  int index;
+
+  //Player role, where 'true' is the divider
+  bool role;
+
+  //Player piece value once done
+  double value = 0;
+
+  //Player status, where false states that the player has no piece yey
+  bool isDone = false;
+
+  Player(this.index, this.value, this.role);
+
+  void setValue(double value) {
+    this.value = value;
+  }
+}
+
 class Game extends StatefulWidget {
-  const Game({Key? key}) : super(key: key);
+  final String imagePath;
+  final num playerNumbers;
+
+  const Game({
+    Key? key,
+    required this.imagePath,
+    required this.playerNumbers,
+  }) : super(key: key);
 
   @override
   State<Game> createState() => _GameState();
 }
 
 class _GameState extends State<Game> {
-  double value = .4;
-  double value2 = .2;
+  double value = 0;
   double max = 0;
-  num current = 1;
+
+  //States
+  bool _isLoading = true;
+  List<Player> _players = [];
+
+  //Values for ingame mechanices
+  double _currentDivide = 0;
+  int _currentPlayer = 0;
 
   final double size = 310.0;
   final double buttonHeight = 64.0;
 
   final Color userColor = Colors.indigo;
 
-  void onChange(double v) {
-    setState(() {
-      if (v < 1 - value) {
-        value2 = v;
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      List<Player> tempPlayers = [];
+
+      for (int i = 0; i < widget.playerNumbers; i++) {
+        tempPlayers.add(Player(i, 0, i == 0 ? true : false));
       }
+
+      setState(() {
+        _players = tempPlayers;
+        _isLoading = false;
+      });
     });
+  }
+
+  Player getCurrPlayer() {
+    return _players[_currentPlayer];
+  }
+
+  void onChange(double v) {
+    // setState(() {
+    //   if (v < 1 - value) {
+    //     value2 = v;
+    //   }
+    setState(() {
+      value = v;
+    });
+  }
+
+  void goToNextPlayer() {
+    if (_currentPlayer == widget.playerNumbers - 1) {
+      goBackToStartPlayer();
+    } else {
+      setState(() {
+        _currentPlayer++;
+      });
+    }
+  }
+
+  void goBackToStartPlayer() {
+    int tempIndex = 0;
+    for (Player item in _players) {
+      if (!item.isDone) {
+        tempIndex = item.index;
+        break;
+      }
+    }
+
+    setState(() {
+      _currentPlayer = tempIndex;
+    });
+  }
+
+  void onAcceptStart() {
+    setState(() {
+      _currentDivide = value;
+    });
+
+    value = _currentDivide;
+
+    goToNextPlayer();
+  }
+
+  void onChooseAbove() {
+    Player currPlayer = getCurrPlayer();
+
+    //Set as divider
+    currPlayer.role = true;
+    int currPlayerIndex = currPlayer.index;
+
+    setState(() {
+      _players[currPlayerIndex] = currPlayer;
+    });
+  }
+
+  void onChooseBelow() {
+    goToNextPlayer();
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        body: Container(
+          decoration: const BoxDecoration(
+            color: Color.fromARGB(255, 27, 26, 36),
+          ),
+          padding: const EdgeInsets.all(8.0),
+          child: const Center(child: CircularProgressIndicator()),
+        ),
+      );
+    }
+
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -48,7 +180,49 @@ class _GameState extends State<Game> {
             ),
             Column(
               children: [
-                const Text("Current: P1 (Divider)"),
+                Container(
+                  margin: const EdgeInsets.fromLTRB(14, 0, 14, 28),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.max,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.max,
+                        children: [
+                          Text(
+                            "Current:",
+                            style: GoogleFonts.ibmPlexMono(
+                              fontSize: 18.0,
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Container(
+                            margin: const EdgeInsets.only(left: 4.0),
+                            child: Text(
+                              "P${getCurrPlayer().index + 1} ${getCurrPlayer().role ? "(Divider)" : ""}",
+                              style: GoogleFonts.ibmPlexMono(
+                                fontSize: 18.0,
+                                color: defaultColors[getCurrPlayer().index],
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      Text(
+                        "Fair share: ${(100 / widget.playerNumbers).toStringAsFixed(0)}%",
+                        style: GoogleFonts.ibmPlexMono(
+                          fontSize: 18.0,
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      )
+                    ],
+                  ),
+                ),
                 Container(
                   width: size,
                   height: size,
@@ -59,34 +233,18 @@ class _GameState extends State<Game> {
                       width: 4,
                     ),
                     image: const DecorationImage(
+                      // image: FileImage(File(widget.imagePath)),
                       image: AssetImage("background-test-3.jpg"),
                       fit: BoxFit.cover,
                     ),
                   ),
                   child: Stack(
                     children: [
-                      // SizedBox(
-                      //   width: double.infinity,
-                      //   height: double.infinity,
-                      //   child: CustomPaint(
-                      //     painter: CirclePaint(
-                      //       value,
-                      //       userColor.withOpacity(0.75),
-                      //       0,
-                      //     ),
-                      //   ),
-                      // ),
-                      // SizedBox(
-                      //   width: double.infinity,
-                      //   height: double.infinity,
-                      //   child: CustomPaint(
-                      //     painter: CirclePaint(
-                      //       value2,
-                      //       Colors.red.withOpacity(0.75),
-                      //       40,
-                      //     ),
-                      //   ),
-                      // ),
+                      CircleDivide(
+                        value: value,
+                        userColor: userColor,
+                        start: 0,
+                      ),
                     ],
                   ),
                 ),
@@ -97,13 +255,29 @@ class _GameState extends State<Game> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  AcceptWrapper(
-                    color: Colors.blue,
-                    value: value2,
-                    onChange: onChange,
-                    max: 1 - value,
-                  ),
+                  _players[_currentPlayer].role
+                      ? AcceptWrapper(
+                          color: Colors.blue,
+                          value: value,
+                          max: 1,
+                          // max: 1 - value,
+                          onChange: onChange,
+                          onStart: onAcceptStart,
+                        )
+                      : ChooseWrapper(
+                          buttonHeight: buttonHeight,
+                          onAbove: onChooseAbove,
+                          onBelow: onChooseBelow,
+                        ),
                   // ChooseWrapper(buttonHeight: buttonHeight)
+                  // AcceptWrapper(
+                  //   color: Colors.blue,
+                  //   value: value,
+                  //   max: 1,
+                  //   // max: 1 - value,
+                  //   onChange: onChange,
+                  //   onStart: onAcceptStart,
+                  // )
                 ],
               ),
             ),
@@ -114,23 +288,45 @@ class _GameState extends State<Game> {
   }
 }
 
-class Player {
-  bool role; //true = divider, false = chooser
-  int index;
-  double value = 0;
-  Color color;
+class CircleDivide extends StatelessWidget {
+  const CircleDivide({
+    Key? key,
+    required this.value,
+    required this.userColor,
+    required this.start,
+  }) : super(key: key);
 
-  Player(this.index, this.value, this.color, this.role);
+  final double value;
+  final Color userColor;
+  final double start;
 
-  void setValue(double value) {
-    this.value = value;
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: double.infinity,
+      child: CustomPaint(
+        painter: CirclePaint(
+          value,
+          userColor.withOpacity(0.75),
+          start,
+        ),
+      ),
+    );
   }
 }
 
 class ChooseWrapper extends StatefulWidget {
   final double buttonHeight;
+  final OnPressed onAbove;
+  final OnPressed onBelow;
 
-  const ChooseWrapper({super.key, required this.buttonHeight});
+  const ChooseWrapper({
+    super.key,
+    required this.buttonHeight,
+    required this.onAbove,
+    required this.onBelow,
+  });
 
   @override
   State<ChooseWrapper> createState() => _ChooseWrapperState();
@@ -149,6 +345,7 @@ class _ChooseWrapperState extends State<ChooseWrapper> {
                 text: "Below",
                 height: widget.buttonHeight,
                 background: Colors.green,
+                onPressed: widget.onBelow,
               ),
             ),
             Expanded(
@@ -156,6 +353,7 @@ class _ChooseWrapperState extends State<ChooseWrapper> {
                 text: "Above",
                 height: widget.buttonHeight,
                 background: Colors.red,
+                onPressed: widget.onAbove,
               ),
             ),
           ],
@@ -165,20 +363,20 @@ class _ChooseWrapperState extends State<ChooseWrapper> {
   }
 }
 
-typedef AcceptCallback = void Function(double value)?;
-
 class AcceptWrapper extends StatefulWidget {
   final Color color;
   final double value;
   final AcceptCallback onChange;
+  final Function onStart;
   final double max;
 
   const AcceptWrapper({
     super.key,
     required this.color,
     required this.value,
-    required this.onChange,
     required this.max,
+    required this.onStart,
+    required this.onChange,
   });
 
   @override
@@ -210,7 +408,9 @@ class _AcceptWrapperState extends State<AcceptWrapper> {
           height: 48.0,
           width: double.infinity,
           child: ElevatedButton(
-            onPressed: () {},
+            onPressed: () {
+              widget.onStart();
+            },
             child: const Text("START"),
           ),
         )
@@ -316,12 +516,14 @@ class ChooseButton extends StatelessWidget {
   final String text;
   final double height;
   final Color? background;
+  final OnPressed onPressed;
 
   const ChooseButton({
     super.key,
     required this.text,
     required this.height,
     required this.background,
+    required this.onPressed,
   });
 
   @override
@@ -333,7 +535,7 @@ class ChooseButton extends StatelessWidget {
         style: ButtonStyle(
           backgroundColor: MaterialStatePropertyAll(background),
         ),
-        onPressed: () {},
+        onPressed: onPressed,
         child: Text(
           text,
           style: GoogleFonts.ibmPlexMono(

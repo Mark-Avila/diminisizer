@@ -1,3 +1,4 @@
+import 'package:camera/camera.dart';
 import 'package:diminisizer/screens/game.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -5,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 const maxVal = 7;
 const minVal = 3;
+
 const defaultColors = [
   Colors.red,
   Colors.blue,
@@ -16,7 +18,9 @@ const defaultColors = [
 ];
 
 class Players extends StatefulWidget {
-  const Players({super.key});
+  final String imagePath;
+
+  const Players({super.key, required this.imagePath});
 
   @override
   State<Players> createState() => _PlayersState();
@@ -67,12 +71,14 @@ class _PlayersState extends State<Players> {
   }
 
   void onStart() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const Game(),
-      ),
-    );
+    // Navigator.push(
+    //   context,
+    //   MaterialPageRoute(
+    //     builder: (context) => Game(
+    //       imagePath: widget.imagePath,
+    //     ),
+    //   ),
+    // );
   }
 
   @override
