@@ -6,25 +6,28 @@ import 'package:diminisizer/screens/players.dart';
 import 'package:flutter/material.dart';
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  // WidgetsFlutterBinding.ensureInitialized();
 
-  // Obtain a list of the available cameras on the device.
-  final cameras = await availableCameras();
+  // // Obtain a list of the available cameras on the device.
+  // final cameras = await availableCameras();
 
-  // Get a specific camera from the list of available cameras.
-  final firstCamera = cameras.first;
+  // // Get a specific camera from the list of available cameras.
+  // final firstCamera = cameras.first;
 
   runApp(
     App(
-      camera: firstCamera,
-    ),
+        // camera: firstCamera,
+        ),
   );
 }
 
 class App extends StatelessWidget {
-  const App({super.key, required this.camera});
+  const App({
+    super.key,
+    // required this.camera,
+  });
 
-  final CameraDescription camera;
+  // final CameraDescription camera;
 
   // This widget is the root of your application.
   @override

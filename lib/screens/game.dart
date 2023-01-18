@@ -32,10 +32,6 @@ class Player {
   bool isDone = false;
 
   Player(this.index, this.value, this.role);
-
-  void setValue(double value) {
-    this.value = value;
-  }
 }
 
 class Game extends StatefulWidget {
@@ -63,6 +59,8 @@ class _GameState extends State<Game> {
   //Values for ingame mechanices
   double _currentDivide = 0;
   int _currentPlayer = 0;
+  List<Player> _playerSession = [];
+  List<Widget> _currStack = [];
 
   final double size = 310.0;
   final double buttonHeight = 64.0;
@@ -81,28 +79,54 @@ class _GameState extends State<Game> {
 
       setState(() {
         _players = tempPlayers;
+        _playerSession = tempPlayers;
         _isLoading = false;
       });
     });
   }
 
   Player getCurrPlayer() {
-    return _players[_currentPlayer];
+    return _playerSession[_currentPlayer];
   }
 
   void onChange(double v) {
-    // setState(() {
-    //   if (v < 1 - value) {
-    //     value2 = v;
-    //   }
     setState(() {
       value = v;
     });
   }
 
   void goToNextPlayer() {
-    if (_currentPlayer == widget.playerNumbers - 1) {
-      goBackToStartPlayer();
+    if (_currentPlayer >= _playerSession.length - 1) {
+      late Player tempPlayer;
+      num dividers = 0;
+
+      for (Player item in _playerSession) {
+        if (item.role) {
+          tempPlayer = item;
+          dividers++;
+        }
+      }
+
+      tempPlayer.isDone = true;
+      tempPlayer.value = value;
+      int playerIndex = tempPlayer.index;
+
+      _players[_playerSession.indexWhere(
+        (item) => item.index == playerIndex,
+      )] = tempPlayer;
+
+      _playerSession.removeWhere((item) => item.index == playerIndex);
+
+      //If the starting divider is the piece receiver,
+      //set the player at the start as the dividider
+      if (dividers == 1) {
+        _playerSession[0].role = true;
+      }
+
+      // goBackToStartPlayer();
+      setState(() {
+        _currentPlayer = 0;
+      });
     } else {
       setState(() {
         _currentPlayer++;
@@ -112,7 +136,7 @@ class _GameState extends State<Game> {
 
   void goBackToStartPlayer() {
     int tempIndex = 0;
-    for (Player item in _players) {
+    for (Player item in _playerSession) {
       if (!item.isDone) {
         tempIndex = item.index;
         break;
@@ -142,7 +166,9 @@ class _GameState extends State<Game> {
     int currPlayerIndex = currPlayer.index;
 
     setState(() {
-      _players[currPlayerIndex] = currPlayer;
+      _playerSession[_playerSession.indexWhere(
+        (item) => item.index == currPlayerIndex,
+      )] = currPlayer;
     });
   }
 
@@ -240,6 +266,7 @@ class _GameState extends State<Game> {
                   ),
                   child: Stack(
                     children: [
+                      for (var item in _currStack) item,
                       CircleDivide(
                         value: value,
                         userColor: userColor,
@@ -255,7 +282,7 @@ class _GameState extends State<Game> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  _players[_currentPlayer].role
+                  getCurrPlayer().role
                       ? AcceptWrapper(
                           color: Colors.blue,
                           value: value,
