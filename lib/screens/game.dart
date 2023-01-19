@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:math';
 
+import 'package:diminisizer/screens/done.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -19,16 +20,9 @@ const defaultColors = [
 ];
 
 class Player {
-  //Player index, in this case the turn
   int index;
-
-  //Player role, where 'true' is the divider
   bool role;
-
-  //Player piece value once done
   double value = 0;
-
-  //Player status, where false states that the player has no piece yey
   bool isDone = false;
 
   Player(this.index, this.value, this.role);
@@ -61,6 +55,12 @@ class _GameState extends State<Game> {
   int _currentPlayer = 0;
   List<Player> _playerSession = [];
   List<Widget> _currStack = [];
+  double _playerSum = 0;
+  double _currMax = 1;
+  double _spinnerStopAt = 0;
+  bool _onDividerPickerDone = false;
+  bool _hasChosenDivider = false;
+  bool _isGameDone = false;
 
   final double size = 310.0;
   final double buttonHeight = 64.0;
@@ -69,7 +69,6 @@ class _GameState extends State<Game> {
 
   @override
   void initState() {
-    super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       List<Player> tempPlayers = [];
 
@@ -83,6 +82,7 @@ class _GameState extends State<Game> {
         _isLoading = false;
       });
     });
+    super.initState();
   }
 
   Player getCurrPlayer() {
@@ -90,13 +90,86 @@ class _GameState extends State<Game> {
   }
 
   void onChange(double v) {
+    if (v <= _currMax) {
+      setState(() {
+        value = v;
+      });
+    }
+  }
+
+  void _getNewStart() {
+    double playerSum = 0;
+
+    for (Player item in _players) {
+      playerSum += item.value;
+      // print(item.value);
+    }
+
     setState(() {
-      value = v;
+      _playerSum = playerSum;
     });
   }
 
-  void goToNextPlayer() {
-    if (_currentPlayer >= _playerSession.length - 1) {
+  void _beforeGameDone() {
+    setState(() {
+      _isGameDone = true;
+    });
+
+    _goToNextPlayer();
+  }
+
+  void _onLastDeny() {
+    Player player1 = _playerSession[0];
+    Player player2 = _playerSession[1];
+
+    if (player1.role) {
+      player1.value = value;
+      player2.value = 1 - _playerSum - value;
+    } else if (player2.role) {
+      player1.value = 1 - _playerSum - value;
+      player2.value = value;
+    }
+
+    _players[player1.index] = player1;
+    _players[player2.index] = player2;
+
+    _beforeGameDone();
+  }
+
+  void _onLastAccept() {
+    Player player1 = _playerSession[0];
+    Player player2 = _playerSession[1];
+
+    if (player1.role) {
+      player1.value = 1 - _playerSum;
+      player2.value = value;
+    } else if (player2.role) {
+      player1.value = value;
+      player2.value = 1 - _playerSum;
+    }
+
+    _players[player1.index] = player1;
+    _players[player2.index] = player2;
+
+    _beforeGameDone();
+  }
+
+  void _goToNextPlayer() {
+    if (_isGameDone) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => Done(
+            players: _players,
+          ),
+        ),
+      );
+    } else if (_hasChosenDivider) {
+      if (!_playerSession[_currentPlayer].role) {
+        setState(() {
+          _currentPlayer++;
+        });
+      }
+    } else if (_currentPlayer >= _playerSession.length - 1) {
       late Player tempPlayer;
       num dividers = 0;
 
@@ -107,23 +180,57 @@ class _GameState extends State<Game> {
         }
       }
 
+      double start = 0;
+
+      for (Player item in _players) {
+        start += item.value;
+      }
+
       tempPlayer.isDone = true;
       tempPlayer.value = value;
       int playerIndex = tempPlayer.index;
 
-      _players[_playerSession.indexWhere(
-        (item) => item.index == playerIndex,
-      )] = tempPlayer;
+      int getIndex = 0;
 
-      _playerSession.removeWhere((item) => item.index == playerIndex);
+      for (Player item in _players) {
+        if (item.index == playerIndex) {
+          getIndex = item.index;
+        }
+      }
+
+      _players[getIndex] = tempPlayer;
+
+      setState(() {
+        _currStack.add(
+          CircleDivide(
+            value: value,
+            userColor: defaultColors[tempPlayer.index],
+            start: start * 100,
+          ),
+        );
+      });
+
+      List<Player> tempSession = List.from(_playerSession);
+
+      tempSession.removeWhere((item) => item.index == playerIndex);
+      _playerSession = tempSession;
 
       //If the starting divider is the piece receiver,
       //set the player at the start as the dividider
       if (dividers == 1) {
         _playerSession[0].role = true;
+      } else {
+        //reset all roles, and assign starting player as divider
+        for (Player item in _playerSession) {
+          item.role = false;
+          _playerSession[0].role = true;
+        }
       }
 
-      // goBackToStartPlayer();
+      _getNewStart();
+
+      _currMax = 1 - _playerSum;
+
       setState(() {
         _currentPlayer = 0;
       });
@@ -134,31 +241,56 @@ class _GameState extends State<Game> {
     }
   }
 
-  void goBackToStartPlayer() {
-    int tempIndex = 0;
-    for (Player item in _playerSession) {
-      if (!item.isDone) {
-        tempIndex = item.index;
-        break;
-      }
-    }
-
+  void _goBackToStartPlayer() {
     setState(() {
-      _currentPlayer = tempIndex;
+      _currentPlayer = 0;
     });
   }
 
-  void onAcceptStart() {
+  void _onDividerPickerStop() {
+    final random = Random();
+    final decision = random.nextBool();
+
+    if (decision) {
+      _playerSession[1].role = true;
+      _playerSession[0].role = false;
+
+      setState(() {
+        _spinnerStopAt = 0.75;
+      });
+    } else {
+      _playerSession[0].role = false;
+      _playerSession[1].role = true;
+
+      setState(() {
+        _spinnerStopAt = 0.25;
+      });
+    }
+
+    setState(() {
+      _onDividerPickerDone = true;
+    });
+  }
+
+  void _onStartDuo() {
+    setState(() {
+      _hasChosenDivider = true;
+    });
+
+    _goToNextPlayer();
+  }
+
+  void _onAcceptStart() {
     setState(() {
       _currentDivide = value;
     });
 
     value = _currentDivide;
 
-    goToNextPlayer();
+    _goToNextPlayer();
   }
 
-  void onChooseAbove() {
+  void _onChooseAbove() {
     Player currPlayer = getCurrPlayer();
 
     //Set as divider
@@ -172,8 +304,8 @@ class _GameState extends State<Game> {
     });
   }
 
-  void onChooseBelow() {
-    goToNextPlayer();
+  void _onChooseBelow() {
+    _goToNextPlayer();
   }
 
   @override
@@ -204,107 +336,136 @@ class _GameState extends State<Game> {
                 ReturnButton(),
               ],
             ),
-            Column(
-              children: [
-                Container(
-                  margin: const EdgeInsets.fromLTRB(14, 0, 14, 28),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.max,
+            _playerSession.length == 2 && !_hasChosenDivider
+                ? DividerPicker(
+                    stopAt: _spinnerStopAt,
+                    currentPlayers: _playerSession,
+                  )
+                : Column(
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.max,
-                        children: [
-                          Text(
-                            "Current:",
-                            style: GoogleFonts.ibmPlexMono(
-                              fontSize: 18.0,
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
+                      Container(
+                        margin: const EdgeInsets.fromLTRB(14, 0, 14, 28),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.max,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.max,
+                              children: [
+                                Text(
+                                  "Current:",
+                                  style: GoogleFonts.ibmPlexMono(
+                                    fontSize: 18.0,
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Container(
+                                  margin: const EdgeInsets.only(left: 4.0),
+                                  child: Text(
+                                    "P${getCurrPlayer().index + 1} ${getCurrPlayer().role ? "(Divider)" : ""}",
+                                    style: GoogleFonts.ibmPlexMono(
+                                      fontSize: 18.0,
+                                      color:
+                                          defaultColors[getCurrPlayer().index],
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                          ),
-                          Container(
-                            margin: const EdgeInsets.only(left: 4.0),
-                            child: Text(
-                              "P${getCurrPlayer().index + 1} ${getCurrPlayer().role ? "(Divider)" : ""}",
+                            Text(
+                              "Fair share: ${(100 / widget.playerNumbers).toStringAsFixed(0)}%",
                               style: GoogleFonts.ibmPlexMono(
                                 fontSize: 18.0,
-                                color: defaultColors[getCurrPlayer().index],
+                                color: Colors.white,
                                 fontWeight: FontWeight.bold,
                               ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      Text(
-                        "Fair share: ${(100 / widget.playerNumbers).toStringAsFixed(0)}%",
-                        style: GoogleFonts.ibmPlexMono(
-                          fontSize: 18.0,
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
+                            )
+                          ],
                         ),
-                      )
-                    ],
-                  ),
-                ),
-                Container(
-                  width: size,
-                  height: size,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Colors.white,
-                      width: 4,
-                    ),
-                    image: const DecorationImage(
-                      // image: FileImage(File(widget.imagePath)),
-                      image: AssetImage("background-test-3.jpg"),
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                  child: Stack(
-                    children: [
-                      for (var item in _currStack) item,
-                      CircleDivide(
-                        value: value,
-                        userColor: userColor,
-                        start: 0,
+                      ),
+                      Container(
+                        width: size,
+                        height: size,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.white,
+                            width: 4,
+                          ),
+                          image: const DecorationImage(
+                            // image: FileImage(File(widget.imagePath)),
+                            image: AssetImage("background-test-3.jpg"),
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                        child: Stack(
+                          children: [
+                            for (var item in _currStack) item,
+                            CircleDivide(
+                              value: value,
+                              userColor: Colors.white,
+                              start: _playerSum * 100,
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
-                ),
-              ],
-            ),
             SizedBox(
               height: 150,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  getCurrPlayer().role
-                      ? AcceptWrapper(
-                          color: Colors.blue,
-                          value: value,
-                          max: 1,
-                          // max: 1 - value,
-                          onChange: onChange,
-                          onStart: onAcceptStart,
+                  _playerSession.length == 2 && !_hasChosenDivider
+                      ? Container(
+                          margin: const EdgeInsets.only(bottom: 8.0),
+                          child: SizedBox(
+                            height: 50,
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              onPressed: _onDividerPickerDone
+                                  ? _onStartDuo
+                                  : _onDividerPickerStop,
+                              style: ButtonStyle(
+                                backgroundColor: MaterialStateProperty.all(
+                                  _onDividerPickerDone
+                                      ? Colors.green
+                                      : Colors.red,
+                                ),
+                              ),
+                              child: Text(
+                                _onDividerPickerDone ? "START" : "STOP",
+                                style: GoogleFonts.ibmPlexMono(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
                         )
-                      : ChooseWrapper(
-                          buttonHeight: buttonHeight,
-                          onAbove: onChooseAbove,
-                          onBelow: onChooseBelow,
-                        ),
-                  // ChooseWrapper(buttonHeight: buttonHeight)
-                  // AcceptWrapper(
-                  //   color: Colors.blue,
-                  //   value: value,
-                  //   max: 1,
-                  //   // max: 1 - value,
-                  //   onChange: onChange,
-                  //   onStart: onAcceptStart,
-                  // )
+                      : getCurrPlayer().role
+                          ? AcceptWrapper(
+                              color: Colors.blue,
+                              value: value,
+                              max: _currMax,
+                              // max: 1 - value,
+                              onChange: onChange,
+                              onStart: _hasChosenDivider
+                                  ? _goBackToStartPlayer
+                                  : _onAcceptStart,
+                            )
+                          : ChooseWrapper(
+                              buttonHeight: buttonHeight,
+                              onAbove: _hasChosenDivider
+                                  ? _onLastAccept
+                                  : _onChooseAbove,
+                              onBelow: _hasChosenDivider
+                                  ? _onLastDeny
+                                  : _onChooseBelow,
+                            ),
                 ],
               ),
             ),
@@ -573,6 +734,82 @@ class ChooseButton extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class DividerPicker extends StatefulWidget {
+  const DividerPicker(
+      {super.key, required this.stopAt, required this.currentPlayers});
+
+  final double stopAt;
+  final List<Player> currentPlayers;
+
+  @override
+  State<DividerPicker> createState() => _DividerPickerState();
+}
+
+class _DividerPickerState extends State<DividerPicker>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 700),
+      vsync: this,
+    );
+    super.initState();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  AnimationController _shouldSpin() {
+    if (widget.stopAt == 0) {
+      _controller.repeat();
+      return _controller;
+    }
+
+    _controller.animateTo(widget.stopAt);
+    return _controller;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(
+          "P${widget.currentPlayers[0].index + 1}",
+          style: GoogleFonts.ibmPlexMono(
+            color: defaultColors[widget.currentPlayers[0].index],
+            fontSize: 48.0,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        RotationTransition(
+          turns: Tween(begin: 0.0, end: 1.0).animate(_shouldSpin()),
+          child: Container(
+            margin: const EdgeInsets.symmetric(vertical: 18.0),
+            child: SizedBox(
+              width: 100,
+              height: 100,
+              child: Image.asset("arrow.png"),
+            ),
+          ),
+        ),
+        Text(
+          "P${widget.currentPlayers[1].index + 1}",
+          style: GoogleFonts.ibmPlexMono(
+            color: defaultColors[widget.currentPlayers[1].index],
+            fontSize: 48.0,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
     );
   }
 }
