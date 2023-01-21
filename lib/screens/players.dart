@@ -7,20 +7,11 @@ import 'package:google_fonts/google_fonts.dart';
 const maxVal = 7;
 const minVal = 3;
 
-const defaultColors = [
-  Colors.red,
-  Colors.blue,
-  Colors.green,
-  Colors.amber,
-  Colors.pink,
-  Colors.purple,
-  Colors.orange
-];
-
 class Players extends StatefulWidget {
   final String imagePath;
+  final CameraDescription camera;
 
-  const Players({super.key, required this.imagePath});
+  const Players({super.key, required this.imagePath, required this.camera});
 
   @override
   State<Players> createState() => _PlayersState();
@@ -71,14 +62,16 @@ class _PlayersState extends State<Players> {
   }
 
   void onStart() {
-    // Navigator.push(
-    //   context,
-    //   MaterialPageRoute(
-    //     builder: (context) => Game(
-    //       imagePath: widget.imagePath,
-    //     ),
-    //   ),
-    // );
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => Game(
+          imagePath: widget.imagePath,
+          playerNumbers: players,
+          camera: widget.camera,
+        ),
+      ),
+    );
   }
 
   @override

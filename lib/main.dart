@@ -1,33 +1,42 @@
 import 'package:camera/camera.dart';
-import 'package:diminisizer/screens/camera.dart';
+import 'package:diminisizer/screens/done.dart';
 import 'package:diminisizer/screens/game.dart';
 import 'package:diminisizer/screens/landing.dart';
-import 'package:diminisizer/screens/players.dart';
 import 'package:flutter/material.dart';
 
 Future<void> main() async {
-  // WidgetsFlutterBinding.ensureInitialized();
+  WidgetsFlutterBinding.ensureInitialized();
 
-  // // Obtain a list of the available cameras on the device.
-  // final cameras = await availableCameras();
+  // Obtain a list of the available cameras on the device.
+  final cameras = await availableCameras();
 
-  // // Get a specific camera from the list of available cameras.
-  // final firstCamera = cameras.first;
+  // Get a specific camera from the list of available cameras.
+  final firstCamera = cameras.first;
 
   runApp(
     App(
-        // camera: firstCamera,
-        ),
+      camera: firstCamera,
+    ),
   );
 }
 
 class App extends StatelessWidget {
-  const App({
+  App({
     super.key,
-    // required this.camera,
+    required this.camera,
   });
 
-  // final CameraDescription camera;
+  final CameraDescription camera;
+
+  final List<Player> players = [
+    Player(0, 0.14, false),
+    Player(1, 0.14, false),
+    Player(2, 0.14, false),
+    Player(3, 0.14, false),
+    Player(4, 0.14, false),
+    Player(5, 0.14, false),
+    Player(6, 0.14, false),
+  ];
 
   // This widget is the root of your application.
   @override
@@ -37,12 +46,8 @@ class App extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      // home: Landing(
-      //   camera: camera,
-      // ),
-      home: const Game(
-        imagePath: "bruh",
-        playerNumbers: 5,
+      home: Landing(
+        camera: camera,
       ),
     );
   }

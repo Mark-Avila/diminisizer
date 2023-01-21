@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:math';
 
+import 'package:camera/camera.dart';
 import 'package:diminisizer/screens/done.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -31,11 +32,13 @@ class Player {
 class Game extends StatefulWidget {
   final String imagePath;
   final num playerNumbers;
+  final CameraDescription camera;
 
   const Game({
     Key? key,
     required this.imagePath,
     required this.playerNumbers,
+    required this.camera,
   }) : super(key: key);
 
   @override
@@ -54,7 +57,7 @@ class _GameState extends State<Game> {
   double _currentDivide = 0;
   int _currentPlayer = 0;
   List<Player> _playerSession = [];
-  List<Widget> _currStack = [];
+  final List<Widget> _currStack = [];
   double _playerSum = 0;
   double _currMax = 1;
   double _spinnerStopAt = 0;
@@ -110,55 +113,13 @@ class _GameState extends State<Game> {
     });
   }
 
-  void _beforeGameDone() {
-    setState(() {
-      _isGameDone = true;
-    });
-
-    _goToNextPlayer();
-  }
-
-  void _onLastDeny() {
-    Player player1 = _playerSession[0];
-    Player player2 = _playerSession[1];
-
-    if (player1.role) {
-      player1.value = value;
-      player2.value = 1 - _playerSum - value;
-    } else if (player2.role) {
-      player1.value = 1 - _playerSum - value;
-      player2.value = value;
-    }
-
-    _players[player1.index] = player1;
-    _players[player2.index] = player2;
-
-    _beforeGameDone();
-  }
-
-  void _onLastAccept() {
-    Player player1 = _playerSession[0];
-    Player player2 = _playerSession[1];
-
-    if (player1.role) {
-      player1.value = 1 - _playerSum;
-      player2.value = value;
-    } else if (player2.role) {
-      player1.value = value;
-      player2.value = 1 - _playerSum;
-    }
-
-    _players[player1.index] = player1;
-    _players[player2.index] = player2;
-
-    _beforeGameDone();
-  }
-
   void _goToNextPlayer() {
     if (_isGameDone) {
       Navigator.of(context).push(
         MaterialPageRoute(
           builder: (context) => Done(
+            path: widget.imagePath,
+            camera: widget.camera,
             players: _players,
           ),
         ),
@@ -308,6 +269,50 @@ class _GameState extends State<Game> {
     _goToNextPlayer();
   }
 
+  void _beforeGameDone() {
+    setState(() {
+      _isGameDone = true;
+    });
+
+    _goToNextPlayer();
+  }
+
+  void _onLastDeny() {
+    Player player1 = _playerSession[0];
+    Player player2 = _playerSession[1];
+
+    if (player1.role) {
+      player1.value = value;
+      player2.value = 1 - _playerSum - value;
+    } else if (player2.role) {
+      player1.value = 1 - _playerSum - value;
+      player2.value = value;
+    }
+
+    _players[player1.index] = player1;
+    _players[player2.index] = player2;
+
+    _beforeGameDone();
+  }
+
+  void _onLastAccept() {
+    Player player1 = _playerSession[0];
+    Player player2 = _playerSession[1];
+
+    if (player1.role) {
+      player1.value = 1 - _playerSum;
+      player2.value = value;
+    } else if (player2.role) {
+      player1.value = value;
+      player2.value = 1 - _playerSum;
+    }
+
+    _players[player1.index] = player1;
+    _players[player2.index] = player2;
+
+    _beforeGameDone();
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -396,9 +401,9 @@ class _GameState extends State<Game> {
                             color: Colors.white,
                             width: 4,
                           ),
-                          image: const DecorationImage(
-                            // image: FileImage(File(widget.imagePath)),
-                            image: AssetImage("background-test-3.jpg"),
+                          image: DecorationImage(
+                            image: FileImage(File(widget.imagePath)),
+                            // image: AssetImage("background-test-3.jpg"),
                             fit: BoxFit.cover,
                           ),
                         ),
@@ -465,6 +470,7 @@ class _GameState extends State<Game> {
                               onBelow: _hasChosenDivider
                                   ? _onLastDeny
                                   : _onChooseBelow,
+                              isGameDone: _hasChosenDivider,
                             ),
                 ],
               ),
@@ -498,6 +504,7 @@ class CircleDivide extends StatelessWidget {
           value,
           userColor.withOpacity(0.75),
           start,
+          false,
         ),
       ),
     );
@@ -508,12 +515,14 @@ class ChooseWrapper extends StatefulWidget {
   final double buttonHeight;
   final OnPressed onAbove;
   final OnPressed onBelow;
+  final bool isGameDone;
 
   const ChooseWrapper({
     super.key,
     required this.buttonHeight,
     required this.onAbove,
     required this.onBelow,
+    required this.isGameDone,
   });
 
   @override
@@ -530,7 +539,7 @@ class _ChooseWrapperState extends State<ChooseWrapper> {
           children: [
             Expanded(
               child: ChooseButton(
-                text: "Below",
+                text: widget.isGameDone ? "DENY" : "Below",
                 height: widget.buttonHeight,
                 background: Colors.green,
                 onPressed: widget.onBelow,
@@ -538,7 +547,7 @@ class _ChooseWrapperState extends State<ChooseWrapper> {
             ),
             Expanded(
               child: ChooseButton(
-                text: "Above",
+                text: widget.isGameDone ? "ACCEPT" : "Above",
                 height: widget.buttonHeight,
                 background: Colors.red,
                 onPressed: widget.onAbove,
@@ -672,8 +681,9 @@ class CirclePaint extends CustomPainter {
   final double value;
   final double start;
   final Color color;
+  final bool isDone;
 
-  CirclePaint(this.value, this.color, this.start);
+  CirclePaint(this.value, this.color, this.start, this.isDone);
 
   double getStartAngle(double start) {
     double deg = (360 * -start / 100) + 90;
@@ -692,7 +702,10 @@ class CirclePaint extends CustomPainter {
       getStartAngle(start),
       2 * pi * value,
       true,
-      Paint()..color = color,
+      Paint()
+        ..color = color
+        ..strokeWidth = isDone ? 5 : 0
+        ..style = isDone ? PaintingStyle.stroke : PaintingStyle.fill,
     );
   }
 

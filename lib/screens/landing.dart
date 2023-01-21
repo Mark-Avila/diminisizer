@@ -20,6 +20,7 @@ class _LandingState extends State<Landing> {
       MaterialPageRoute(
         builder: (context) => Camera(
           camera: widget.camera,
+          dividedPieces: [],
         ),
       ),
     );

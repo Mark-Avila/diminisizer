@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:camera/camera.dart';
+import 'package:diminisizer/main.dart';
+import 'package:diminisizer/screens/game.dart';
 import 'package:diminisizer/screens/players.dart';
 import 'package:flutter/material.dart';
 
@@ -10,9 +12,11 @@ class Camera extends StatefulWidget {
   const Camera({
     super.key,
     required this.camera,
+    required this.dividedPieces,
   });
 
   final CameraDescription camera;
+  final List<Player> dividedPieces;
 
   @override
   CameraState createState() => CameraState();
@@ -45,6 +49,40 @@ class CameraState extends State<Camera> {
     super.dispose();
   }
 
+  List<Widget> _generatePieces() {
+    List<Widget> widgets = [];
+    double start = 0;
+
+    if (widget.dividedPieces.isNotEmpty) {
+      for (Player item in widget.dividedPieces) {
+        widgets.add(
+          CircleDivide(
+            value: item.value,
+            userColor: defaultColors[item.index],
+            start: start,
+          ),
+        );
+        start += item.value * 100;
+      }
+    } else {
+      widgets.add(
+        Container(
+          width: 350,
+          height: 450,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: Colors.white,
+              width: 4,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return widgets;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -64,23 +102,18 @@ class CameraState extends State<Camera> {
                 if (snapshot.connectionState == ConnectionState.done) {
                   // If the Future is complete, display the preview.
                   return Stack(
+                    alignment: Alignment.center,
                     children: [
                       SizedBox(
                         height: 450,
                         width: double.infinity,
                         child: CameraPreview(_controller),
                       ),
-                      Center(
-                        child: Container(
-                          width: 350,
-                          height: 450,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: Colors.white,
-                              width: 4,
-                            ),
-                          ),
+                      SizedBox(
+                        height: 450,
+                        width: 350,
+                        child: Stack(
+                          children: _generatePieces(),
                         ),
                       ),
                     ],
@@ -96,35 +129,49 @@ class CameraState extends State<Camera> {
       ),
       floatingActionButton: FloatingActionButton(
         // Provide an onPressed callback.
-        onPressed: () async {
-          // Take the Picture in a try / catch block. If anything goes wrong,
-          // catch the error.
-          try {
-            // Ensure that the camera is initialized.
-            await _initializeControllerFuture;
+        onPressed: widget.dividedPieces.isEmpty
+            ? () async {
+                // Take the Picture in a try / catch block. If anything goes wrong,
+                // catch the error.
+                try {
+                  // Ensure that the camera is initialized.
+                  await _initializeControllerFuture;
 
-            // Attempt to take a picture and get the file `image`
-            // where it was saved.
-            final image = await _controller.takePicture();
+                  // Attempt to take a picture and get the file `image`
+                  // where it was saved.
+                  final image = await _controller.takePicture();
 
-            if (!mounted) return;
+                  if (!mounted) return;
 
-            // If the picture was taken, display it on a new screen.
-            await Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => Players(
-                  // Pass the automatically generated path to
-                  // the DisplayPictureScreen widget.
-                  imagePath: image.path,
-                ),
-              ),
-            );
-          } catch (e) {
-            // If an error occurs, log the error to the console.
-            print(e);
-          }
-        },
-        child: const Icon(Icons.camera_alt),
+                  // If the picture was taken, display it on a new screen.
+                  await Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => Players(
+                        // Pass the automatically generated path to
+                        // the DisplayPictureScreen widget.
+                        imagePath: image.path,
+                        camera: widget.camera,
+                      ),
+                    ),
+                  );
+                } catch (e) {
+                  // If an error occurs, log the error to the console.
+                  print(e);
+                }
+              }
+            : () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => App(
+                      camera: widget.camera,
+                    ),
+                  ),
+                );
+              },
+        child: widget.dividedPieces.isNotEmpty
+            ? const Icon(Icons.check)
+            : const Icon(Icons.camera_alt),
       ),
     );
   }
