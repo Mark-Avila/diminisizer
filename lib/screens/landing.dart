@@ -1,8 +1,8 @@
 import 'package:camera/camera.dart';
 import 'package:diminisizer/screens/camera.dart';
-import 'package:diminisizer/screens/players.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:lottie/lottie.dart';
 
 class Landing extends StatefulWidget {
   final CameraDescription camera;
@@ -14,13 +14,15 @@ class Landing extends StatefulWidget {
 }
 
 class _LandingState extends State<Landing> {
+  final double lottieSize = 300;
+
   void onStartPressed() {
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => Camera(
           camera: widget.camera,
-          dividedPieces: [],
+          dividedPieces: const [],
         ),
       ),
     );
@@ -49,6 +51,12 @@ class _LandingState extends State<Landing> {
                     fontSize: 40.0,
                   ),
                 ),
+              ),
+              Lottie.asset(
+                'divider.json',
+                repeat: true,
+                height: lottieSize,
+                width: lottieSize,
               ),
               SizedBox(
                 width: 256,

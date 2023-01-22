@@ -156,7 +156,15 @@ class CameraState extends State<Camera> {
                   );
                 } catch (e) {
                   // If an error occurs, log the error to the console.
-                  print(e);
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => App(
+                        // Pass the automatically generated path to
+                        // the DisplayPictureScreen widget.
+                        camera: widget.camera,
+                      ),
+                    ),
+                  );
                 }
               }
             : () {

@@ -23,6 +23,7 @@ class Done extends StatefulWidget {
 }
 
 class _DoneState extends State<Done> {
+  ///Generates the pieces for each user
   List<Widget> _generatePieces() {
     double start = 0;
     List<Widget> widgets = [];
@@ -34,6 +35,7 @@ class _DoneState extends State<Done> {
         start: start,
       ));
 
+      ///Player piece value is scaled 0-1, convert to 1-100
       start += item.value * 100;
     }
 
@@ -157,7 +159,6 @@ class DividedDisplay extends StatelessWidget {
         ),
         image: DecorationImage(
           image: FileImage(File(path)),
-          // image: AssetImage("background-test-3.jpg"),
           fit: BoxFit.cover,
         ),
       ),

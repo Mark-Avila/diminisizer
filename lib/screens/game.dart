@@ -46,30 +46,53 @@ class Game extends StatefulWidget {
 }
 
 class _GameState extends State<Game> {
-  double value = 0;
-  double max = 0;
-
-  //States
+  ///States
   bool _isLoading = true;
   List<Player> _players = [];
 
-  //Values for ingame mechanices
-  double _currentDivide = 0;
+  ///Current piece value
+  double _value = 0;
+
+  ///Index of current player
   int _currentPlayer = 0;
-  List<Player> _playerSession = [];
-  final List<Widget> _currStack = [];
-  double _playerSum = 0;
+
+  ///Current piece max value
+  ///It is used so that the value doesnt exceed
+  ///other players pieces
   double _currMax = 1;
+
+  ///Used as a temp variable for 'value'
+  double _currentDivide = 0;
+
+  ///Sum of all finished pieces
+  double _playerSum = 0;
+
+  ///State for spinner to stop at
+  ///The spinner in question is used during
+  ///choosing a divider for divider-chooser mode
   double _spinnerStopAt = 0;
+
+  ///State for signaling that dividerpicker process is done
   bool _onDividerPickerDone = false;
+
+  ///State for signaling that picking a divider is done
   bool _hasChosenDivider = false;
+
+  ///State for signaling that overall game is done
   bool _isGameDone = false;
 
+  ///List of player instances that is used as a mutable version
+  ///of the original players list
+  List<Player> _playerSession = [];
+
+  ///List of CircleDivide widgets for displaying each finished piece
+  final List<CircleDivide> _currStack = [];
+
+  /// Constants
   final double size = 310.0;
   final double buttonHeight = 64.0;
 
-  final Color userColor = Colors.indigo;
-
+  ///Called on first screen load
   @override
   void initState() {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -88,24 +111,28 @@ class _GameState extends State<Game> {
     super.initState();
   }
 
+  ///Returns the instance of the current player
   Player getCurrPlayer() {
     return _playerSession[_currentPlayer];
   }
 
+  //Called everytime the dividing slider is changed
   void onChange(double v) {
+    //Don't exceed the current max value
     if (v <= _currMax) {
       setState(() {
-        value = v;
+        _value = v;
       });
     }
   }
 
+  ///Sets the current player instance infront of the list
+  ///that isn't done as the divider
   void _getNewStart() {
     double playerSum = 0;
 
     for (Player item in _players) {
       playerSum += item.value;
-      // print(item.value);
     }
 
     setState(() {
@@ -113,7 +140,9 @@ class _GameState extends State<Game> {
     });
   }
 
+  ///Process for moving to the next player
   void _goToNextPlayer() {
+    //Game is done, route to the Done Screen
     if (_isGameDone) {
       Navigator.of(context).push(
         MaterialPageRoute(
@@ -124,16 +153,25 @@ class _GameState extends State<Game> {
           ),
         ),
       );
+
+      //If the dividerpicker process is done
     } else if (_hasChosenDivider) {
+      ///If the current player isn't the divider chosen,
+      ///move to the other player
       if (!_playerSession[_currentPlayer].role) {
         setState(() {
           _currentPlayer++;
         });
       }
+
+      //Reached the last player in the session
     } else if (_currentPlayer >= _playerSession.length - 1) {
       late Player tempPlayer;
       num dividers = 0;
 
+      ///Checks if other players decided to divide a piece
+      ///aka the ones who claimed that a piece is above or
+      ///greater than the fair share
       for (Player item in _playerSession) {
         if (item.role) {
           tempPlayer = item;
@@ -141,38 +179,53 @@ class _GameState extends State<Game> {
         }
       }
 
+      ///Get the current start for the new piece
       double start = 0;
-
       for (Player item in _players) {
         start += item.value;
       }
 
+      ///Set current player as 'done', which means this player
+      ///will be skipped, also set this players value
       tempPlayer.isDone = true;
-      tempPlayer.value = value;
+      tempPlayer.value = _value;
       int playerIndex = tempPlayer.index;
 
       int getIndex = 0;
 
+      ///Get the index of the current player in the
+      ///immutable players list
+      ///
+      ///Q. Why not use an array method like .indexOf or .indexWhere?
+      ///A. Because for some reason these methods modify the _players
+      ///list
       for (Player item in _players) {
         if (item.index == playerIndex) {
           getIndex = item.index;
         }
       }
 
+      ///Modify the player instance via index
       _players[getIndex] = tempPlayer;
 
+      ///Add to the current piece stack
       setState(() {
         _currStack.add(
           CircleDivide(
-            value: value,
+            value: _value,
             userColor: defaultColors[tempPlayer.index],
             start: start * 100,
           ),
         );
       });
 
+      ///Copy the _playerSession list
+      ///
+      ///Q. Again, why?
+      ///A. same reason
       List<Player> tempSession = List.from(_playerSession);
 
+      ///Remove player from the current session
       tempSession.removeWhere((item) => item.index == playerIndex);
       _playerSession = tempSession;
 
@@ -188,10 +241,13 @@ class _GameState extends State<Game> {
         }
       }
 
+      //Find new player to start with
       _getNewStart();
 
+      ///Set the current max value
       _currMax = 1 - _playerSum;
 
+      //Go back to start player
       setState(() {
         _currentPlayer = 0;
       });
@@ -208,14 +264,18 @@ class _GameState extends State<Game> {
     });
   }
 
+  ///Called when the player press stop in the spinner
   void _onDividerPickerStop() {
+    //Generate random boolean
     final random = Random();
     final decision = random.nextBool();
 
+    ///Sets the role of the chosen player as the divider
     if (decision) {
       _playerSession[1].role = true;
       _playerSession[0].role = false;
 
+      //Stop at arrow pointing upwards
       setState(() {
         _spinnerStopAt = 0.75;
       });
@@ -223,11 +283,13 @@ class _GameState extends State<Game> {
       _playerSession[0].role = false;
       _playerSession[1].role = true;
 
+      //Stop at arrow pointing downwards
       setState(() {
         _spinnerStopAt = 0.25;
       });
     }
 
+    //Dividing process is done
     setState(() {
       _onDividerPickerDone = true;
     });
@@ -243,10 +305,10 @@ class _GameState extends State<Game> {
 
   void _onAcceptStart() {
     setState(() {
-      _currentDivide = value;
+      _currentDivide = _value;
     });
 
-    value = _currentDivide;
+    _value = _currentDivide;
 
     _goToNextPlayer();
   }
@@ -277,33 +339,41 @@ class _GameState extends State<Game> {
     _goToNextPlayer();
   }
 
+  ///Called when a player presses 'Deny' during the divider-chooser process
   void _onLastDeny() {
     Player player1 = _playerSession[0];
     Player player2 = _playerSession[1];
 
+    ///If the first player is the divider, sets the value of the piece to
+    ///player1, and give the remaining to player 2
     if (player1.role) {
-      player1.value = value;
-      player2.value = 1 - _playerSum - value;
+      player1.value = _value;
+      player2.value = 1 - _playerSum - _value;
+
+      //Same as above, but vice-versa
     } else if (player2.role) {
-      player1.value = 1 - _playerSum - value;
-      player2.value = value;
+      player1.value = 1 - _playerSum - _value;
+      player2.value = _value;
     }
 
     _players[player1.index] = player1;
     _players[player2.index] = player2;
 
+    ///Call process before declaring the game as done
     _beforeGameDone();
   }
 
+  ///Called when a player presses 'Accept' during the divider-chooser process,
+  ///works the same way above, except the piece goes to player who chose accept
   void _onLastAccept() {
     Player player1 = _playerSession[0];
     Player player2 = _playerSession[1];
 
     if (player1.role) {
       player1.value = 1 - _playerSum;
-      player2.value = value;
+      player2.value = _value;
     } else if (player2.role) {
-      player1.value = value;
+      player1.value = _value;
       player2.value = 1 - _playerSum;
     }
 
@@ -411,7 +481,7 @@ class _GameState extends State<Game> {
                           children: [
                             for (var item in _currStack) item,
                             CircleDivide(
-                              value: value,
+                              value: _value,
                               userColor: Colors.white,
                               start: _playerSum * 100,
                             ),
@@ -454,7 +524,7 @@ class _GameState extends State<Game> {
                       : getCurrPlayer().role
                           ? AcceptWrapper(
                               color: Colors.blue,
-                              value: value,
+                              value: _value,
                               max: _currMax,
                               // max: 1 - value,
                               onChange: onChange,
