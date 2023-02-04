@@ -27,8 +27,11 @@ class _DoneState extends State<Done> {
   List<Widget> _generatePieces() {
     double start = 0;
     List<Widget> widgets = [];
+    List<Player> tempPlayers = widget.players;
 
-    for (Player item in widget.players) {
+    tempPlayers.sort((a, b) => a.queue.compareTo(b.queue));
+
+    for (Player item in tempPlayers) {
       widgets.add(CircleDivide(
         value: item.value,
         userColor: defaultColors[item.index],

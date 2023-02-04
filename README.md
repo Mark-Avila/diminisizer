@@ -1,6 +1,8 @@
-# diminisizer
+# Diminisizer
 
 Object divider mobile application based on Last Diminisher
+
+Developed by Group 1
 
 ## Getting Started
 

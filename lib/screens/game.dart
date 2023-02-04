@@ -25,6 +25,7 @@ class Player {
   bool role;
   double value = 0;
   bool isDone = false;
+  num queue = 0;
 
   Player(this.index, this.value, this.role);
 }
@@ -53,6 +54,8 @@ class _GameState extends State<Game> {
   ///Current piece value
   double _value = 0;
 
+  num _currQueue = 1;
+
   ///Index of current player
   int _currentPlayer = 0;
 
@@ -60,6 +63,8 @@ class _GameState extends State<Game> {
   ///It is used so that the value doesnt exceed
   ///other players pieces
   double _currMax = 1;
+
+  double _newDividerMax = 0;
 
   ///Used as a temp variable for 'value'
   double _currentDivide = 0;
@@ -119,9 +124,21 @@ class _GameState extends State<Game> {
   //Called everytime the dividing slider is changed
   void onChange(double v) {
     //Don't exceed the current max value
-    if (v <= _currMax) {
+
+    if (_playerSession.length == 2) {
       setState(() {
         _value = v;
+      });
+    } else if (_currentPlayer > 0) {
+      if (v <= _newDividerMax) {
+        setState(() {
+          _value = v;
+        });
+      }
+    } else if (v <= _currMax) {
+      setState(() {
+        _value = v;
+        _newDividerMax = v;
       });
     }
   }
@@ -189,6 +206,8 @@ class _GameState extends State<Game> {
       ///will be skipped, also set this players value
       tempPlayer.isDone = true;
       tempPlayer.value = _value;
+      tempPlayer.queue = _currQueue;
+      _currQueue++;
       int playerIndex = tempPlayer.index;
 
       int getIndex = 0;
@@ -350,6 +369,10 @@ class _GameState extends State<Game> {
       player1.value = _value;
       player2.value = 1 - _playerSum - _value;
 
+      player1.queue = _currQueue;
+      _currQueue++;
+      player2.queue = _currQueue;
+
       //Same as above, but vice-versa
     } else if (player2.role) {
       player1.value = 1 - _playerSum - _value;
@@ -358,6 +381,10 @@ class _GameState extends State<Game> {
 
     _players[player1.index] = player1;
     _players[player2.index] = player2;
+
+    player1.queue = _currQueue;
+    _currQueue++;
+    player2.queue = _currQueue;
 
     ///Call process before declaring the game as done
     _beforeGameDone();
@@ -370,15 +397,19 @@ class _GameState extends State<Game> {
     Player player2 = _playerSession[1];
 
     if (player1.role) {
-      player1.value = 1 - _playerSum;
+      player1.value = 1 - _playerSum - _value;
       player2.value = _value;
     } else if (player2.role) {
       player1.value = _value;
-      player2.value = 1 - _playerSum;
+      player2.value = 1 - _playerSum - _value;
     }
 
     _players[player1.index] = player1;
     _players[player2.index] = player2;
+
+    player1.queue = _currQueue;
+    _currQueue++;
+    player2.queue = _currQueue;
 
     _beforeGameDone();
   }
@@ -452,7 +483,7 @@ class _GameState extends State<Game> {
                               ],
                             ),
                             Text(
-                              "Fair share: ${(100 / widget.playerNumbers).toStringAsFixed(0)}%",
+                              "Fair share: ${(100 / _playerSession.length).toStringAsFixed(0)}%",
                               style: GoogleFonts.ibmPlexMono(
                                 fontSize: 18.0,
                                 color: Colors.white,
@@ -533,6 +564,7 @@ class _GameState extends State<Game> {
                                   : _onAcceptStart,
                             )
                           : ChooseWrapper(
+                              playerNum: 100 / _playerSession.length,
                               buttonHeight: buttonHeight,
                               onAbove: _hasChosenDivider
                                   ? _onLastAccept
@@ -586,14 +618,15 @@ class ChooseWrapper extends StatefulWidget {
   final OnPressed onAbove;
   final OnPressed onBelow;
   final bool isGameDone;
+  final double playerNum;
 
-  const ChooseWrapper({
-    super.key,
-    required this.buttonHeight,
-    required this.onAbove,
-    required this.onBelow,
-    required this.isGameDone,
-  });
+  const ChooseWrapper(
+      {super.key,
+      required this.buttonHeight,
+      required this.onAbove,
+      required this.onBelow,
+      required this.isGameDone,
+      required this.playerNum});
 
   @override
   State<ChooseWrapper> createState() => _ChooseWrapperState();
@@ -604,7 +637,9 @@ class _ChooseWrapperState extends State<ChooseWrapper> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const ChooseLabel(),
+        ChooseLabel(
+          playernum: widget.playerNum,
+        ),
         Row(
           children: [
             Expanded(
@@ -689,7 +724,10 @@ class _AcceptWrapperState extends State<AcceptWrapper> {
 class ChooseLabel extends StatelessWidget {
   const ChooseLabel({
     Key? key,
+    required this.playernum,
   }) : super(key: key);
+
+  final double playernum;
 
   @override
   Widget build(BuildContext context) {
@@ -699,7 +737,7 @@ class ChooseLabel extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 18.0),
       child: Center(
         child: Text(
-          "Is it below or above 20%?",
+          "Is it below or above ${playernum.toStringAsFixed(0)}%?",
           style: GoogleFonts.roboto(
             textStyle: const TextStyle(
               fontSize: 18.0,
@@ -718,10 +756,16 @@ class ReturnButton extends StatelessWidget {
     Key? key,
   }) : super(key: key);
 
+  void _onStartPressed(BuildContext context) {
+    Navigator.pop(context);
+  }
+
   @override
   Widget build(BuildContext context) {
     return TextButton(
-      onPressed: () {},
+      onPressed: () {
+        Navigator.pop(context);
+      },
       child: Row(
         children: [
           Container(
@@ -839,7 +883,7 @@ class _DividerPickerState extends State<DividerPicker>
   @override
   void initState() {
     _controller = AnimationController(
-      duration: const Duration(milliseconds: 700),
+      duration: const Duration(milliseconds: 400),
       vsync: this,
     );
     super.initState();
@@ -880,7 +924,7 @@ class _DividerPickerState extends State<DividerPicker>
             child: SizedBox(
               width: 100,
               height: 100,
-              child: Image.asset("arrow.png"),
+              child: Image.asset("assets/arrow.png"),
             ),
           ),
         ),

@@ -42,18 +42,38 @@ class _LandingState extends State<Landing> {
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             mainAxisSize: MainAxisSize.max,
             children: [
-              Text(
-                "DIMINISIZER",
-                style: GoogleFonts.ibmPlexMono(
-                  textStyle: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 40.0,
+              Column(
+                children: [
+                  Text(
+                    "DIMINISIZER",
+                    style: GoogleFonts.ibmPlexMono(
+                      textStyle: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 40.0,
+                      ),
+                    ),
                   ),
-                ),
+                  Container(
+                    margin: const EdgeInsets.symmetric(vertical: 4.0),
+                    child: Text(
+                      "CSE2 - Decision Theory",
+                      style: GoogleFonts.roboto(
+                        color: Colors.white60,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    "Developed by Group 1",
+                    style: GoogleFonts.roboto(
+                      color: Colors.white60,
+                    ),
+                  ),
+                ],
               ),
               Lottie.asset(
-                'divider.json',
+                'assets/divider.json',
                 repeat: true,
                 height: lottieSize,
                 width: lottieSize,
